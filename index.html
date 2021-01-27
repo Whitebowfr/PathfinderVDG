@@ -119,10 +119,10 @@
         });
         function launch() {
             document.getElementById("container").innerHTML = ''
-            var entryX = document.getElementById("entryX").value
-            var entryY = document.getElementById("entryY").value
-            var exitX = document.getElementById("exitX").value
-            var exitY = document.getElementById("exitY").value
+            var entryX = document.getElementById("entryX").value ||1
+            var entryY = document.getElementById("entryY").value ||1
+            var exitX = document.getElementById("exitX").value || 1
+            var exitY = document.getElementById("exitY").value || 1
             var path = finder.findPath(entryX, entryY, exitX, exitY, grid);
             console.log(path)
 
@@ -157,6 +157,7 @@
                 j=-1
             }
         }
+        launch()
     </script>
 </body>
 </html>
