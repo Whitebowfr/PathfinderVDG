@@ -39,6 +39,7 @@
     <input type="number" id="exitX" placeholder="exit X">
     <input type="number" id="exitY" placeholder="exit Y">
     <input type="button" value="launch" onclick="launch()">
+    <div id="coords"></div>
     <div id="container">
     </div>
     <script>
@@ -135,19 +136,19 @@
                 while(j++<106) {
                     ii = 0
                     if(curAr[j] == 1) {
-                        s+= `<div class="cell blocked" onclick="console.log(` + j + `,` + i + `)">  </div>`;
+                        s+= `<div class="cell blocked" onclick="console.log(` + j + `,` + i + `); document.getElementById('coords').innerHTML = 'Y = ` + j + ` ; X = ` + i + `'">  </div>`;
                     } else {
                         var found = false
                         for (ii; ii < path.length; ii++) {
                             if (path[ii][0] == j && path[ii][1] == i) {
                                 console.log(path[ii][0], i)
-                                s+= `<div class="cell path" onclick="console.log(` + j + `,` + i + `)">  </div>`;
+                                s+= `<div class="cell path" onclick="console.log(` + j + `,` + i + `); document.getElementById('coords').innerHTML = ' Y = ` + j + ` ; X = ` + i + `'">  </div>`;
                                 found = true
                                 break
                             }
                         }
                         if (!found) {
-                            s+= `<div class="cell" onclick="console.log(` + j + `,` + i + `)">  </div>`;
+                            s+= `<div class="cell" onclick="console.log(` + j + `,` + i + `); document.getElementById('coords').innerHTML = 'Y = ` + j + ` ; X = ` + i + `'">  </div>`;
                         }
                     }
                 }
