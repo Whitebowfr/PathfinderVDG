@@ -7,7 +7,7 @@
     <script type="text/javascript" src="pathfinding-browser.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jsPlumb/2.15.5/js/jsplumb.min.js" integrity="sha512-PjminIGk9jefzK8KKri4U44KYMW4C4WZNTY/4dB33FwkoY5pSF7GL+ZIvz8t61QsY5h30gfWZ0IJ4h/yQVoRyA==" crossorigin="anonymous"></script>
     <script src="//cdnjs.cloudflare.com/ajax/libs/jquery/1.9.1/jquery.min.js"></script>
-    <script type="text/javascript" src="data_2px.js"></script>
+    <script type="text/javascript" src="/data_2px.js"></script>
     <script type="text/javascript">
         var matrix = TwoPxMatrix
        // https://i.imgur.com/0rXuTeO.jpg
@@ -62,16 +62,20 @@
 
         var doors = {
             "bat1": [
-                [132, 149],
+                [133, 149],
                 [134, 149],
+                [135, 149],
+                [139, 149],
                 [149, 148],
+                [150, 149],
                 [151, 149]
             ],
             "bat2": [
                 [164, 135],
                 [166, 169],
                 [186, 135],
-                [187, 135]
+                [187, 135],
+                [189, 135]
             ],
             "bat3": [
                 [251, 108],
@@ -81,20 +85,26 @@
                 [262, 165],
                 [262, 167],
                 [254, 109],
+                [263, 63],
                 [275, 111],
                 [274, 109],
             ],
             "bat13": [
                 [213, 113],
+                [203, 139],
                 [205, 133],
                 [206, 135],
                 [207, 143],
+                [207, 131],
                 [208, 144],
                 [209, 144],
                 [211, 115],
                 [212, 114],
                 [221, 153],
                 [222, 156],
+                [222, 158],
+                [223, 161],
+                [224, 119],
                 [224, 120],
                 [224, 158],
                 [226, 159],
@@ -104,8 +114,8 @@
         var container = document.getElementById("container")
 
         function calculatePath(finder, grid) {
-            var entry = [document.getElementById("entryX").value || 293, document.getElementById("entryY").value || 96]
-            var exit = [document.getElementById("exitX").value || 197, document.getElementById("exitY").value || 139]
+            var entry = [document.getElementById("entryX").value || 242, document.getElementById("entryY").value || 64]
+            var exit = [document.getElementById("exitX").value || 224, document.getElementById("exitY").value || 178]
             return finder.findPath(entry[0], entry[1], exit[0], exit[1], grid);
         }
 
@@ -116,7 +126,7 @@
             if (v1 == v2) {
                 return true
             }
-            return Math.abs(v1 - v2) < ap
+            return Math.abs(v1 - v2) <= ap
         }
 
         var squareSize = 2
@@ -214,7 +224,8 @@
                             for (porte in doors[bat]) {
                                 if (approxEqual(doors[bat][porte][0],newPath[co][0]) && approxEqual(doors[bat][porte][1], newPath[co][1])) {
                                     inBat = !inBat
-                                    console.log(inBat, doors[bat][porte])
+                                    console.log(inBat, doors[bat][porte], co, newPath[co])
+                                    break
                                 }
                             }
                         }
