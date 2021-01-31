@@ -27,6 +27,7 @@
             background: url("https://i.imgur.com/lca1ENM.jpg");
             background-repeat: no-repeat;
             background-size: contain;
+            position: relative;
         }
 
         body {
@@ -59,12 +60,63 @@
             "self": [70, 106, 21, 69],
         }
 
+        var doors = {
+            "bat1": [
+                [132, 149],
+                [134, 149],
+                [149, 148],
+                [151, 149]
+            ],
+            "bat2": [
+                [164, 135],
+                [166, 169],
+                [186, 135],
+                [187, 135]
+            ],
+            "bat3": [
+                [251, 108],
+                [252, 108],
+                [263, 68],
+                [261, 63],
+                [262, 165],
+                [262, 167],
+                [254, 109],
+                [275, 111],
+                [274, 109],
+            ],
+            "bat13": [
+                [213, 113],
+                [205, 133],
+                [206, 135],
+                [207, 143],
+                [208, 144],
+                [209, 144],
+                [211, 115],
+                [212, 114],
+                [221, 153],
+                [222, 156],
+                [224, 120],
+                [224, 158],
+                [226, 159],
+            ],
+        }
+
         var container = document.getElementById("container")
 
         function calculatePath(finder, grid) {
-            var entry = [document.getElementById("entryX").value || 208, document.getElementById("entryY").value || 204]
-            var exit = [document.getElementById("exitX").value || 239, document.getElementById("exitY").value || 27]
+            var entry = [document.getElementById("entryX").value || 293, document.getElementById("entryY").value || 96]
+            var exit = [document.getElementById("exitX").value || 197, document.getElementById("exitY").value || 139]
             return finder.findPath(entry[0], entry[1], exit[0], exit[1], grid);
+        }
+
+        function approxEqual(v1, v2, ap) {
+            if (ap == null) {
+                ap = 1
+            }
+            if (v1 == v2) {
+                return true
+            }
+            return Math.abs(v1 - v2) < ap
         }
 
         var squareSize = 2
@@ -133,16 +185,39 @@
             var dynamicAnchors = [[0.5,0.5,0,-1], [0.5,0.5, 1, 0], [0.5,0.5, 0, 1], [0.5,0.5,-1,0]]
 
             jsPlumb.ready(function() {
+                jsPlumb.importDefaults({
+                    Container: "container"
+                })
+                var inBat = false
                 for (co in newPath) {
                     if (newPath[co - 1] != null) {
-                        jsPlumb.connect({
-                            source:newPath[co - 1].toString(),
-                            target:newPath[co].toString(),
-                            anchor: dynamicAnchors,
-                            endpoint:"Blank",
-                            connector:["Straight"],
-                            paintStyle:{strokeWidth:3, stroke:'red'} 
-                        })
+                        if (inBat) {
+                            jsPlumb.connect({
+                                source:newPath[co - 1].toString(),
+                                target:newPath[co].toString(),
+                                anchor: dynamicAnchors,
+                                endpoint:"Blank",
+                                connector:["Straight"],
+                                paintStyle:{strokeWidth:3, stroke:'red',  dashstyle: '3'} 
+                            })
+                        } else {
+                            jsPlumb.connect({
+                                source:newPath[co - 1].toString(),
+                                target:newPath[co].toString(),
+                                anchor: dynamicAnchors,
+                                endpoint:"Blank",
+                                connector:["Straight"],
+                                paintStyle:{strokeWidth:3, stroke:'red'} 
+                            })
+                        }
+                        for (bat in doors) {
+                            for (porte in doors[bat]) {
+                                if (approxEqual(doors[bat][porte][0],newPath[co][0]) && approxEqual(doors[bat][porte][1], newPath[co][1])) {
+                                    inBat = !inBat
+                                    console.log(inBat, doors[bat][porte])
+                                }
+                            }
+                        }
                     }
                 }
             })
@@ -150,8 +225,8 @@
 
         function placeDiv(x, y, color, classE) {
             var offset = $('#container').offset()
-            var xPos = parseInt(x*size + offset.left)
-            var yPos = parseInt(y*size + offset.top)
+            var xPos = parseInt(x*size)
+            var yPos = parseInt(y*size)
             var s = `<div id="` + x + `,` + y + `" class="cell ` + classE + `" style="left: ` + xPos + `px; top: ` + yPos + `px; background-color: ` + color + `"> </div>`
             container.innerHTML += s
         }
