@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -11,18 +12,18 @@
 
     <script type="text/javascript">
         var globalMatrix = TwoPxMatrix
-       // https://i.imgur.com/0rXuTeO.jpg
+        var globalBatColors = TwoPxBats
+            // https://i.imgur.com/0rXuTeO.jpg
     </script>
     <style>
-
-        .cell { 
+        .cell {
             width: 15px;
             height: 15px;
             margin: 1px;
             position: absolute;
             background-color: none;
         }
-
+        
         #container {
             width: 100px;
             height: 100px;
@@ -31,14 +32,21 @@
             background-size: contain;
             position: relative;
             cursor: grab;
-			overflow: auto;
         }
-
+        
         body {
             margin: 0;
         }
+        
+        #lines,
+        #grid {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+        }
     </style>
 </head>
+
 <body>
     <div id="inputs">
         <input type="number" id="entryX" placeholder="entry X">
@@ -58,281 +66,346 @@
         <input type="number" placeholder="numéro de salle" id="destination">
         <input type="button" value="Plan suivant" onclick="showNextPath()">
         <div id="coords"></div>
-    <div id="container">
-    </div>
-    <script>
-        var placeCounter = 1
-        var passingTrough = ["global"]
-        var planCounter = 1
-        
-        // {"Name": [firstX, lastX, firstY, lastY]}
-        var limits = {
-            "pro": [0, 27, 0, 69],
-            "bat1_2": [28, 48, 0, 68],
-            "s_entry": [49, 54, 0, 68],
-            "admin": [55, 69, 41, 68],
-            "n_entry": [55, 106, 0, 20],
-            "bat3": [55, 69, 21, 40],
-            "self": [70, 106, 21, 69],
-        }
+        <div id="container">
+            <canvas id="lines" width="2245" height="1196"></canvas>
+            <canvas id="grid" width="2245" height="1196"></canvas>
+        </div>
+        <script>
+            var placeCounter = 1
+            var passingTrough = ["global"]
+            var planCounter = 1
 
-        var doors = {
-            "bat1": [
-                [133, 149],
-                [134, 149],
-                [135, 149],
-                [139, 149],
-                [149, 148],
-                [150, 149],
-                [151, 149]
-            ],
-            "bat2": [
-                [164, 135],
-                [166, 169],
-                [186, 135],
-                [187, 135],
-                [189, 135],
-                [192, 180],
-                [187, 136],
-                [185, 178],
-                [172, 169]
-            ],
-            "bat3": [
-                [263, 68],
-                [261, 63],
-                [262, 165],
-                [262, 167],
-                [252, 110],
-                [254, 109],
-                [263, 63],
-                [275, 111],
-                [274, 109],
-                [281, 109],
-            ],
-            "bat13": [
-                [213, 113],
-                [203, 139],
-                [205, 133],
-                [206, 135],
-                [207, 143],
-                [207, 131],
-                [208, 144],
-                [209, 144],
-                [211, 115],
-                [212, 114],
-                [221, 153],
-                [222, 156],
-                [222, 158],
-                [223, 161],
-                [224, 119],
-                [224, 158],
-                [226, 159],
-            ],
-        }
-
-        var container = document.getElementById("container")
-        var size
-
-        function calculatePath(finder, grid) {
-            var entry = [document.getElementById("entryX").value || 242, document.getElementById("entryY").value || 64]
-            var exit = [document.getElementById("exitX").value || 224, document.getElementById("exitY").value || 178]
-            return finder.findPath(entry[0], entry[1], exit[0], exit[1], grid);
-        }
-
-        function changeOption(val) {
-			console.log(val)
-        }
-
-        function calculateCoords(type) {
-            if (type == "global") {
-                var squareSize = 2
-                var squareNumber = globalMatrix.length / squareSize
-                size = 3368/1.5 / globalMatrix[0].length
+            // {"Name": [firstX, lastX, firstY, lastY]}
+            var limits = {
+                "pro": [0, 27, 0, 69],
+                "bat1_2": [28, 48, 0, 68],
+                "s_entry": [49, 54, 0, 68],
+                "admin": [55, 69, 41, 68],
+                "n_entry": [55, 106, 0, 20],
+                "bat3": [55, 69, 21, 40],
+                "self": [70, 106, 21, 69],
             }
-        }
-        
-        function approxEqual(v1, v2, ap) {
-            if (ap == null) {
-                ap = 1
+
+            var doors = [
+                    [131, 134],
+                    [132, 149],
+                    [151, 149],
+                    [157, 183],
+                    [164, 169],
+                    [164, 136],
+                    [187, 136],
+                    [187, 169],
+                    [187, 179],
+                    [221, 156],
+                    [209, 144],
+                    [205, 135],
+                    [214, 114],
+                    [224, 118],
+                    [252, 108],
+                    [274, 108],
+                    [262, 69],
+                    [262, 167]
+                ],
+                doorsX = [],
+                doorsY = []
+
+            doors.forEach((el) => {
+                doorsX.push(el[0])
+                doorsY.push(el[1])
+            })
+
+            var container = document.getElementById("container")
+            var size
+            var pathType = "compressed"
+
+            function calculatePath(finder, grid) {
+                var entry = [document.getElementById("entryX").value || 242, document.getElementById("entryY").value || 64]
+                var exit = [document.getElementById("exitX").value || 224, document.getElementById("exitY").value || 178]
+                return finder.findPath(entry[0], entry[1], exit[0], exit[1], grid);
             }
-            if (v1 == v2) {
-                return true
+
+            function changeOption(val) {
+                launchNew(val)
+                console.log(val)
             }
-            return Math.abs(v1 - v2) <= ap
-        }
 
-        function launch() {
-            calculateCoords("global")
-            container.style.width = 3368 / 1.5 + "px"
-            container.style.height = 1794 / 1.5 + "px"
+            function calculateCoords(type) {
+                if (type == "global") {
+                    var squareSize = 2
+                    var squareNumber = globalMatrix.length / squareSize
+                    size = parseInt(document.getElementById("container").style.width) / globalMatrix[0].length
+                }
+            }
 
-            var grid = new PF.Grid(globalMatrix);
-            var finder = new PF.AStarFinder({
-                diagonalMovement : PF.DiagonalMovement.Always,
-                dontCrossCorners: true,
-            });
+            function approxEqual(v1, v2, ap) {
+                if (ap == null) {
+                    ap = 1
+                }
+                if (v1 == v2) {
+                    return true
+                }
+                return Math.abs(v1 - v2) <= ap
+            }
 
-            container.addEventListener("click", function (evt) {
-            var offset = $('#container').offset()
-            var coX = parseInt((evt.pageX - offset.left)/size)
-            var coY = parseInt((evt.pageY - offset.top)/size)
-            $('#coords').text(coX + "," + coY)
-            if (globalMatrix[coY][coX] == 1) {
-                console.log("Unwalkable")
-                $('#coords').css('color', 'orangered')
-            } else {
-                if (document.getElementById("instantPathCheck").checked) {
-                    if (placeCounter > 2) {
-                        placeCounter = 1
-                        if (document.getElementsByClassName("start")[0]) {
-                            document.getElementsByClassName("start")[0].remove()
-                        }
-                        if (document.getElementsByClassName("exit")[0]) {
-                            document.getElementsByClassName("exit")[0].remove()
-                        }
+            function launch() {
+                container.style.width = 3368 / 1.5 + "px"
+                container.style.height = 1794 / 1.5 + "px"
+                calculateCoords("global")
+
+                var grid = new PF.Grid(globalMatrix);
+                var finder = new PF.AStarFinder({
+                    diagonalMovement: PF.DiagonalMovement.Always,
+                    dontCrossCorners: true,
+                });
+
+                container.addEventListener("click", handleMouseClickLaunch)
+
+                var path = calculatePath(finder, grid)
+                console.time("Path")
+                var newPath = pathType == "compressed" ? PF.Util.compressPath(path) : PF.Util.smoothenPath(grid, path)
+                var totalCoords = []
+
+                const batColors = [0, 1, 2, 3, 4, 5, 6, 7]
+                const correspondingBatNames = ["None", "Bat 1", "Bat 2", "Bat 13", "Bat 3", "Gymnase", "Admin", "Self"]
+
+                for (let fullCoords in path) {
+                    let isDoor = (doorsX.indexOf(path[fullCoords][0]) > -1 && doorsY.indexOf(path[fullCoords][1]) > -1 && checkForDoors(path[fullCoords], doorsX, doorsY)),
+                        temp = {}
+                    if (!checkInline(path[fullCoords - 1], path[fullCoords], path[parseInt(fullCoords) + 1]) || isDoor) {
+                        temp.x = path[fullCoords][0]
+                        temp.y = path[fullCoords][1]
+                        temp.door = isDoor
+                        temp.bat = correspondingBatNames[batColors.indexOf(TwoPxBats[temp.y][temp.x])] != "None"
+                        temp.batName = correspondingBatNames[batColors.indexOf(TwoPxBats[temp.y][temp.x])]
+                        totalCoords.push(temp)
+                    }
+                }
+
+                console.log(totalCoords)
+
+                var c = document.getElementById("lines")
+                var offset = $('#container').offset()
+                for (let newCoord in totalCoords) {
+                    let lineIndex = 0
+                    var ctx = c.getContext("2d")
+                    if (newCoord == 0) {
+                        ctx.clearRect(0, 0, c.width, c.height)
+                    }
+                    ctx.beginPath()
+                    ctx.lineWidth = 4
+                    ctx.lineCap = "round"
+                    ctx.strokeStyle = "#bd0000"
+                    if (totalCoords[newCoord].bat || totalCoords[newCoord].door) {
+                        ctx.setLineDash([8, 10])
+                        console.log("Set")
                     } else {
-                        if (placeCounter == 1) {
-                            placeDiv(coX, coY, "green", "start")
-                            $("#entryX").val(coX)
-                            $("#entryY").val(coY)
-                            placeCounter++
-                        } if (placeCounter == 2 && ($("#entryX").val() != coX && $("#entryY").val() != coY)) {
-                            placeDiv(coX, coY, "red", "exit")
-                            $("#exitX").val(coX)
-                            $("#exitY").val(coY)
-                            placeCounter++
-                            launch()
+                        ctx.setLineDash([])
+                        console.log("Unset")
+                    }
+                    if (totalCoords[newCoord - 1] != undefined) {
+                        ctx.moveTo(parseInt(totalCoords[newCoord - 1].x * size), parseInt(totalCoords[newCoord - 1].y * size))
+                    } else {
+                        ctx.moveTo(parseInt(totalCoords[0].x * size), parseInt(totalCoords[0].y * size))
+                    }
+
+                    ctx.lineTo(parseInt(totalCoords[newCoord].x * size), parseInt(totalCoords[newCoord].y * size))
+                    ctx.stroke()
+                }
+                console.timeEnd("Path")
+            }
+
+            //Handle the placing of divs, a bit obsolete
+            function placeDiv(x, y, color, classE, divOffset) {
+                var offset = $('#container').offset()
+                var xPos = parseInt((x + divOffset.x) * size)
+                var yPos = parseInt((y + divOffset.y) * size)
+                var s = `<div id="` + x + `,` + y + `" class="cell ` + classE + `" style="left: ` + xPos + `px; top: ` + yPos + `px; background-color: ` + color + `"> </div>`
+                container.innerHTML += s
+            }
+
+            //obsolete function but leaving it for debugging
+            function buildGrid() {
+                console.time("Start")
+                var canvasGrid = document.getElementById("grid");
+                var ctxGrid = canvasGrid.getContext('2d');
+                var data = '<svg width="100%" height="100%" xmlns="http://www.w3.org/2000/svg"> \
+        <defs> \
+            <pattern id="smallGrid" width="' + size + 1 + '" height="' + size + 1 + '" patternUnits="userSpaceOnUse"> \
+                <path d="M 8 0 L 0 0 0 8" fill="none" stroke="gray" stroke-width="0.5" /> \
+            </pattern> \
+        </defs> \
+        <rect width="100%" height="100%" fill="url(#smallGrid)" /> \
+    </svg>';
+
+                var DOMURL = window.URL || window.webkitURL || window;
+
+                var img = new Image();
+                var svg = new Blob([data], {
+                    type: 'image/svg+xml;charset=utf-8'
+                });
+                var url = DOMURL.createObjectURL(svg);
+
+                img.onload = function() {
+                    ctxGrid.drawImage(img, 0, 0);
+                    DOMURL.revokeObjectURL(url);
+                }
+                img.src = url;
+                ctxGrid.clearRect(0, 0, canvasGrid.width, canvasGrid.height)
+                const values = [1, 2, 3]
+                const colors = ["rgba(94, 18, 3, 0.6)", "rgba(0, 94, 3, 0.6)", "rgba(0, 18, 94, 0.6)"]
+                for (let row in globalMatrix) {
+                    for (let cell in globalMatrix[row]) {
+                        if (globalBatColors[row][cell] != 0) {
+                            ctxGrid.beginPath()
+                            ctxGrid.rect(cell * size, row * size, size, size)
+                                //ctxGrid.fillStyle = colors[values.indexOf(globalBatColors[row][cell])]
+                            ctxGrid.fillStyle = "rgba(94, 18, 3, 0.6)"
+                            ctxGrid.fill()
                         }
                     }
                 }
-                console.log("Walkable")
-                $('#coords').css('color', 'green')
-            }
-            console.log([coX, coY]);
-        }, false)
-
-            jsPlumb.deleteEveryConnection()
-            container.innerHTML = ''
-            var path = calculatePath(finder, grid)
-            var newPath = PF.Util.smoothenPath(grid, path)
-
-            for (newCoords in newPath){
-                placeDiv(newPath[newCoords][0], newPath[newCoords][1], "none", "")
+                console.timeEnd("Start")
             }
 
-            jsPlumb.ready(function() {
-                jsPlumb.importDefaults({
-                    Container: "container"
-                })
-                var inBat = false
-                for (co in newPath) {
-                    if (newPath[co - 1] != null) {
-                        if (inBat) {
-                            jsPlumb.connect({
-                                source:newPath[co - 1].toString(),
-                                target:newPath[co].toString(),
-                                anchor: "Center",
-                                endpoint:"Blank",
-                                connector:["Straight"],
-                                paintStyle:{strokeWidth:3, stroke:'red',  dashstyle: '3'} 
-                            })
+            launch()
+
+            document.addEventListener("keydown", function(e) {
+                if (e.key == "e" || e.key == "E") {
+                    $("#instantPathCheck").prop("checked", !$("#instantPathCheck").prop("checked"))
+                }
+            })
+
+            var xScroll, yScroll;
+            previousTime = 0
+
+            function handleMouse(e) {
+                if (Math.abs(e.timeStamp - previousTime) >= 200) {
+                    previousTime = e.timeStamp
+                    xScroll = e.clientX;
+                    yScroll = e.clientY;
+                    return false
+                } else if (xScroll && yScroll) {
+                    window.scrollBy(-(e.clientX - xScroll), -(e.clientY - yScroll));
+                }
+                previousTime = e.timeStamp
+                xScroll = e.clientX;
+                yScroll = e.clientY;
+            }
+
+            function handleMouseClickLaunch(evt) {
+                var offset = $('#container').offset()
+                var coX = parseInt((evt.pageX - offset.left) / size)
+                var coY = parseInt((evt.pageY - offset.top) / size)
+                console.log(coX, coY)
+                $('#coords').text(coX + "," + coY)
+                if (globalMatrix[coY][coX] == 1) {
+                    console.log("Unwalkable")
+                    $('#coords').css('color', 'orangered')
+                } else {
+                    if (document.getElementById("instantPathCheck").checked) {
+                        if (placeCounter > 2) {
+                            placeCounter = 1
+                            if (document.getElementsByClassName("start")[0]) {
+                                document.getElementsByClassName("start")[0].remove()
+                            }
+                            if (document.getElementsByClassName("exit")[0]) {
+                                document.getElementsByClassName("exit")[0].remove()
+                            }
                         } else {
-                            jsPlumb.connect({
-                                source:newPath[co - 1].toString(),
-                                target:newPath[co].toString(),
-                                anchor: "Center",
-                                endpoint:"Blank",
-                                connector:["Straight"],
-                                paintStyle:{strokeWidth:3, stroke:'red'} 
-                            })
-                        }
-                        for (bat in doors) {
-                            for (porte in doors[bat]) {
-                                if (previousXDoorCo == null) {
-                                    var previousXDoorCo = newPath[co][0]
-                                    var previousYDoorCo = newPath[co][1]
-                                }
-                                if (approxEqual(doors[bat][porte][0],newPath[co][0], 3) && approxEqual(doors[bat][porte][1], newPath[co][1], 3) && (!approxEqual(newPath[co][0], previousXDoorCo, 7) || !approxEqual(newPath[co][1], previousYDoorCo, 7))) {
-                                    inBat = !inBat
-                                    console.log(inBat, doors[bat][porte], co, newPath[co])
-                                    previousXDoorCo = newPath[co][0]
-                                    previousYDoorCo = newPath[co][1]
-                                    if (inBat && !passingTrough.includes(bat)) {
-                                        passingTrough.push(bat)
-                                        passingTrough.push("global")
-                                    }
-                                    break
-                                }
+                            if (placeCounter == 1) {
+                                placeDiv(coX, coY, "green", "start", {
+                                    x: 0,
+                                    y: 0
+                                })
+                                $("#entryX").val(coX)
+                                $("#entryY").val(coY)
+                                placeCounter++
+                            }
+                            if (placeCounter == 2 && ($("#entryX").val() != coX && $("#entryY").val() != coY)) {
+                                placeDiv(coX, coY, "red", "exit", {
+                                    x: 0,
+                                    y: 0
+                                })
+                                $("#exitX").val(coX)
+                                $("#exitY").val(coY)
+                                placeCounter++
+                                launch()
                             }
                         }
                     }
+                    $('#coords').css('color', 'green')
                 }
+            }
+
+            function attachEvent(at) {
+                if (at) {
+                    container.addEventListener("mousemove", handleMouse)
+                } else {
+                    container.removeEventListener("mousemove", handleMouse)
+                }
+            }
+
+            function showNextPath() {
+                var salle = $("#destination").val()
+                salle.split("", 3)
+                console.log(salle[2])
+                console.log(passingTrough[planCounter])
+                planCounter++
+                launchNew()
+            }
+
+            //https://www.geeksforgeeks.org/program-check-three-points-collinear/
+            function checkInline(p1, p2, p3) {
+                if (p1 == undefined || p2 == undefined || p3 == undefined) return false
+                else return ((p3[1] - p2[1]) * (p2[0] - p1[0]) == (p2[1] - p1[1]) * (p3[0] - p2[0]))
+            }
+
+            //https://stackoverflow.com/questions/20798477/how-to-find-index-of-all-occurrences-of-element-in-array
+            function getAllIndexes(arr, val) {
+                var indexes = [],
+                    i;
+                for (i = 0; i < arr.length; i++)
+                    if (arr[i] === val)
+                        indexes.push(i);
+                return indexes;
+            }
+
+            //https://stackoverflow.com/questions/56306097/get-nearest-point-from-another-one-in-javascript
+            function distance(p, point) {
+                return Math.sqrt(Math.pow(point.x - p.x, 2) + Math.pow(point.y - p.y, 2))
+            }
+
+            function checkForDoors(point, dX, dY) {
+                var indX = getAllIndexes(dX, point[0]),
+                    indY = getAllIndexes(dY, point[1])
+
+                //https://stackoverflow.com/questions/16312528/check-if-an-array-contains-any-element-of-another-array-in-javascript
+                return indX.some(r => indY.indexOf(r) >= 0)
+            }
+
+            function launchNew(val) {
+                val = "bat2"
+                document.getElementById("container").style.background = "url('bat2rdc.png')"
+                document.getElementById("container").style.backgroundRepeat = "no-repeat"
+                document.getElementById("container").style.backgroundSize = "contain"
+                if (val == "bat2") {
+                    console.log(document.getElementById("container").naturalHeight)
+                    document.getElementById("container").style.width = "1122px"
+                    document.getElementById("container").style.height = "1616px"
+                }
+            }
+
+            container.addEventListener("mousedown", function(e) {
+                this.style.cursor = "grabbing"
+                attachEvent(true)
             })
-        }
+            container.addEventListener("mouseup", function(e) {
+                this.style.cursor = "grab"
+                attachEvent(false)
+            })
 
-        function placeDiv(x, y, color, classE) {
-            var offset = $('#container').offset()
-            var xPos = parseInt(x*size)
-            var yPos = parseInt(y*size)
-            var s = `<div id="` + x + `,` + y + `" class="cell ` + classE + `" style="left: ` + xPos + `px; top: ` + yPos + `px; background-color: ` + color + `"> </div>`
-            container.innerHTML += s
-        }
-
-        function buildGrid(startx, starty, endx, endy) {
-            while (starty < endy) {
-                while (startx < endx) {
-                    if (globalMatrix[starty][startx] == 1) {
-                        placeDiv(startx, starty, "black", "")
-                    } 
-                    startx++
-                }
-                starty++
-            }
-        }
-        launch()
-
-        document.addEventListener("keydown", function (e) {
-            if (e.key == "e" || e.key == "E") {
-                $("#instantPathCheck").prop("checked", !$("#instantPathCheck").prop("checked"))
-            }
-        })
-
-        var xScroll, yScroll;
-        previousTime = 0
-        
-		function handleMouse(e) {
-          
-          if ((previousTime - e.timeStamp) >= 50) {
-              return false
-          }
-		  if (xScroll && yScroll) {
-			window.scrollBy(-(e.clientX - xScroll), -(e.clientY - yScroll));
-		  }
-
-		  xScroll = e.clientX;
-		  yScroll = e.clientY;
-          previousTime = e.timeStamp
-		}
-		
-		function attachEvent(at) {
-			if (at) {
-				console.log("added")
-				container.addEventListener("mousemove", handleMouse)
-			} else {
-				container.removeEventListener("mousemove", handleMouse)
-			}
-		}
-
-        function showNextPath() {
-            var salle = $("#destination").val()
-            salle.split("", 3)
-            console.log(salle[2])
-            console.log(passingTrough[planCounter])
-            planCounter++
-        }
-
-		container.addEventListener("mousedown", function (e) {attachEvent(true)})
-		container.addEventListener("mouseup", function (e) {attachEvent(false)})
-    </script>
+            buildGrid()
+        </script>
 </body>
+
 </html>
