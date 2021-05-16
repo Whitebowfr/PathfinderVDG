@@ -75,6 +75,7 @@
                 entry: [],
                 exit: []
             }
+            var totalCoords = []
 
             // {"Name": [firstX, lastX, firstY, lastY]}
             var limits = {
@@ -147,6 +148,7 @@
             }
 
             function launch(type) {
+                totalCoords = []
                 calculateCoords(type)
                 currentMap = type
                 document.getElementById("container").style.width = batDictionnary[type].naturalWidth + "px"
@@ -167,7 +169,6 @@
                 var path = calculatePath(finder, grid)
                 console.time("Path")
                 var newPath = pathType == "compressed" ? PF.Util.compressPath(path) : PF.Util.smoothenPath(grid, path)
-                var totalCoords = []
 
                 const batColors = [0, 1, 2, 3, 4, 5, 6, 7]
                 const correspondingBatNames = ["None", "Bat 1", "Bat 2", "Bat 13", "Bat 3", "Gymnase", "Admin", "Self"]
@@ -194,12 +195,11 @@
 
                 var c = document.getElementById("lines")
                 var offset = $('#container').offset()
+                var ctx = c.getContext("2d")
+                ctx.clearRect(0, 0, c.width, c.height)
+
                 for (let newCoord in totalCoords) {
                     let lineIndex = 0
-                    var ctx = c.getContext("2d")
-                    if (newCoord == 0) {
-                        ctx.clearRect(0, 0, c.width, c.height)
-                    }
                     ctx.beginPath()
                     ctx.lineWidth = 4
                     ctx.lineCap = "round"
@@ -396,9 +396,27 @@
                     document.getElementById("lines").width = document.getElementById("grid").width = parseInt(document.getElementById("container").style.width)
                     document.getElementById("container").style.height = "1616px"
                     document.getElementById("lines").height = document.getElementById("grid").height = parseInt(document.getElementById("container").style.height)
+                    console.log("launched")
+                    convertPath("Bat 2", "bat2rdc", totalCoords)
                     launch("bat2rdc")
-                    buildGrid()
                 }
+            }
+
+            function convertPath(naturalName, dicName, path) {
+                let points = []
+                path.forEach((el) => {
+                    if (el.door && el.batName == naturalName && points.length <= 2) {
+                        points.push(el)
+                    }
+                })
+                points.forEach((el) => {
+                    el.x = parseInt((el.x - batDictionnary.global.offsets[dicName][0]) * batDictionnary[dicName].mult + batDictionnary[dicName].offsets[0])
+                    el.y = parseInt((el.y - batDictionnary.global.offsets[dicName][1]) * batDictionnary[dicName].mult + batDictionnary[dicName].offsets[1])
+                })
+                $("#entryX").val(points[0].x)
+                $("#entryY").val(points[0].y)
+                $("#exitX").val(points[1].x)
+                $("#exitY").val(points[1].y)
             }
 
             container.addEventListener("mousedown", function(e) {
