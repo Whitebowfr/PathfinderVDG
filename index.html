@@ -224,11 +224,12 @@
             }
 
             //obsolete function but leaving it for debugging
-            function buildGrid() {
+            function buildGrid(grid) {
                 console.time("Start")
                 var canvasGrid = document.getElementById("grid");
                 var ctxGrid = canvasGrid.getContext('2d');
-                var data = '<svg width="100%" height="100%" xmlns="http://www.w3.org/2000/svg"> \
+                if (grid) {
+                    var data = '<svg width="100%" height="100%" xmlns="http://www.w3.org/2000/svg"> \
         <defs> \
             <pattern id="smallGrid" width="' + size + '" height="' + size + '" patternUnits="userSpaceOnUse"> \
                 <path d="M 8 0 L 0 0 0 8" fill="none" stroke="gray" stroke-width="0.5" /> \
@@ -237,19 +238,20 @@
         <rect width="100%" height="100%" fill="url(#smallGrid)" /> \
     </svg>';
 
-                var DOMURL = window.URL || window.webkitURL || window;
+                    var DOMURL = window.URL || window.webkitURL || window;
 
-                var img = new Image();
-                var svg = new Blob([data], {
-                    type: 'image/svg+xml;charset=utf-8'
-                });
-                var url = DOMURL.createObjectURL(svg);
+                    var img = new Image();
+                    var svg = new Blob([data], {
+                        type: 'image/svg+xml;charset=utf-8'
+                    });
+                    var url = DOMURL.createObjectURL(svg);
 
-                img.onload = function() {
-                    ctxGrid.drawImage(img, 0, 0);
-                    DOMURL.revokeObjectURL(url);
+                    img.onload = function() {
+                        ctxGrid.drawImage(img, 0, 0);
+                        DOMURL.revokeObjectURL(url);
+                    }
+                    img.src = url;
                 }
-                img.src = url;
                 ctxGrid.clearRect(0, 0, canvasGrid.width, canvasGrid.height)
                 const values = [1, 2, 3]
                 const colors = ["rgba(94, 18, 3, 0.6)", "rgba(0, 94, 3, 0.6)", "rgba(0, 18, 94, 0.6)"]
@@ -334,25 +336,6 @@
                                 ctx.clearRect(0, 0, canvas.width, canvas.height)
                                 break
                         }
-                        /*if (placeCounter == 1) {
-                            placeDiv(coX, coY, "green", "start", {
-                                x: 0,
-                                y: 0
-                            })
-                            $("#entryX").val(coX)
-                            $("#entryY").val(coY)
-                            placeCounter++
-                        }
-                        if (placeCounter == 2 && ($("#entryX").val() != coX && $("#entryY").val() != coY)) {
-                            placeDiv(coX, coY, "red", "exit", {
-                                x: 0,
-                                y: 0
-                            })
-                            $("#exitX").val(coX)
-                            $("#exitY").val(coY)
-                            placeCounter++
-                            launch("global")
-                        }*/
                     }
                 }
                 $('#coords').css('color', 'green')
