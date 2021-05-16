@@ -6,13 +6,13 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Document</title>
     <script type="text/javascript" src="pathfinding-browser.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jsPlumb/2.15.5/js/jsplumb.min.js" integrity="sha512-PjminIGk9jefzK8KKri4U44KYMW4C4WZNTY/4dB33FwkoY5pSF7GL+ZIvz8t61QsY5h30gfWZ0IJ4h/yQVoRyA==" crossorigin="anonymous"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/1.9.1/jquery.min.js"></script>
     <script type="text/javascript" src="data_2px.js"></script>
+    <script type="text/javascript" src="data/batDictionnary.js"></script>
+
 
     <script type="text/javascript">
-        var globalMatrix = TwoPxMatrix
-        var globalBatColors = TwoPxBats
+        var matrix
             // https://i.imgur.com/0rXuTeO.jpg
     </script>
     <style>
@@ -25,8 +25,6 @@
         }
         
         #container {
-            width: 100px;
-            height: 100px;
             background: url("https://i.imgur.com/lca1ENM.jpg");
             background-repeat: no-repeat;
             background-size: contain;
@@ -53,7 +51,7 @@
         <input type="number" id="entryY" placeholder="entry Y">
         <input type="number" id="exitX" placeholder="exit X">
         <input type="number" id="exitY" placeholder="exit Y">
-        <input type="button" value="launch" onclick="launch()">
+        <input type="button" value="launch" onclick="launch('global')">
         <span>Activer les coordonnées automatiques (BETA)</span>
         <input type="checkbox" id="instantPathCheck" aria-label="Si problème, rechargez la page">
         <select onchange="changeOptions(this.value)">
@@ -71,9 +69,12 @@
             <canvas id="grid" width="2245" height="1196"></canvas>
         </div>
         <script>
-            var placeCounter = 1
-            var passingTrough = ["global"]
-            var planCounter = 1
+            var currentMap = "global"
+            var mapEntries = {
+                currentState: "none",
+                entry: [],
+                exit: []
+            }
 
             // {"Name": [firstX, lastX, firstY, lastY]}
             var limits = {
@@ -119,8 +120,10 @@
             var pathType = "compressed"
 
             function calculatePath(finder, grid) {
-                var entry = [document.getElementById("entryX").value || 242, document.getElementById("entryY").value || 64]
-                var exit = [document.getElementById("exitX").value || 224, document.getElementById("exitY").value || 178]
+                var entry = [document.getElementById("entryX").value, document.getElementById("entryY").value]
+                var exit = [document.getElementById("exitX").value, document.getElementById("exitY").value]
+                if (entry[0] == "") entry = batDictionnary[currentMap].defaultNodes[0]
+                if (exit[0] == "") exit = batDictionnary[currentMap].defaultNodes[1]
                 return finder.findPath(entry[0], entry[1], exit[0], exit[1], grid);
             }
 
@@ -130,11 +133,7 @@
             }
 
             function calculateCoords(type) {
-                if (type == "global") {
-                    var squareSize = 2
-                    var squareNumber = globalMatrix.length / squareSize
-                    size = parseInt(document.getElementById("container").style.width) / globalMatrix[0].length
-                }
+                size = batDictionnary[type].trueSquareSize
             }
 
             function approxEqual(v1, v2, ap) {
@@ -147,16 +146,21 @@
                 return Math.abs(v1 - v2) <= ap
             }
 
-            function launch() {
-                container.style.width = 3368 / 1.5 + "px"
-                container.style.height = 1794 / 1.5 + "px"
-                calculateCoords("global")
+            function launch(type) {
+                calculateCoords(type)
+                currentMap = type
+                document.getElementById("container").style.width = batDictionnary[type].naturalWidth + "px"
+                document.getElementById("grid").width = document.getElementById("lines").width = parseInt(document.getElementById("container").style.width)
+                document.getElementById("container").style.height = batDictionnary[type].naturalHeight + "px"
+                document.getElementById("grid").height = document.getElementById("lines").height = parseInt(document.getElementById("container").style.height)
+                matrix = allMatrixs[batDictionnary[type].matrix]
 
-                var grid = new PF.Grid(globalMatrix);
+                var grid = new PF.Grid(matrix);
                 var finder = new PF.AStarFinder({
                     diagonalMovement: PF.DiagonalMovement.Always,
                     dontCrossCorners: true,
                 });
+                console.log(grid)
 
                 container.addEventListener("click", handleMouseClickLaunch)
 
@@ -175,8 +179,13 @@
                         temp.x = path[fullCoords][0]
                         temp.y = path[fullCoords][1]
                         temp.door = isDoor
-                        temp.bat = correspondingBatNames[batColors.indexOf(TwoPxBats[temp.y][temp.x])] != "None"
-                        temp.batName = correspondingBatNames[batColors.indexOf(TwoPxBats[temp.y][temp.x])]
+                        if (currentMap == "global") {
+                            temp.bat = correspondingBatNames[batColors.indexOf(allMatrixs.TwoPxBats[temp.y][temp.x])] != "None"
+                            temp.batName = correspondingBatNames[batColors.indexOf(allMatrixs.TwoPxBats[temp.y][temp.x])]
+                        } else {
+                            temp.bat = true
+                            temp.batName = currentMap
+                        }
                         totalCoords.push(temp)
                     }
                 }
@@ -214,15 +223,6 @@
                 console.timeEnd("Path")
             }
 
-            //Handle the placing of divs, a bit obsolete
-            function placeDiv(x, y, color, classE, divOffset) {
-                var offset = $('#container').offset()
-                var xPos = parseInt((x + divOffset.x) * size)
-                var yPos = parseInt((y + divOffset.y) * size)
-                var s = `<div id="` + x + `,` + y + `" class="cell ` + classE + `" style="left: ` + xPos + `px; top: ` + yPos + `px; background-color: ` + color + `"> </div>`
-                container.innerHTML += s
-            }
-
             //obsolete function but leaving it for debugging
             function buildGrid() {
                 console.time("Start")
@@ -230,7 +230,7 @@
                 var ctxGrid = canvasGrid.getContext('2d');
                 var data = '<svg width="100%" height="100%" xmlns="http://www.w3.org/2000/svg"> \
         <defs> \
-            <pattern id="smallGrid" width="' + size + 1 + '" height="' + size + 1 + '" patternUnits="userSpaceOnUse"> \
+            <pattern id="smallGrid" width="' + size + '" height="' + size + '" patternUnits="userSpaceOnUse"> \
                 <path d="M 8 0 L 0 0 0 8" fill="none" stroke="gray" stroke-width="0.5" /> \
             </pattern> \
         </defs> \
@@ -253,9 +253,9 @@
                 ctxGrid.clearRect(0, 0, canvasGrid.width, canvasGrid.height)
                 const values = [1, 2, 3]
                 const colors = ["rgba(94, 18, 3, 0.6)", "rgba(0, 94, 3, 0.6)", "rgba(0, 18, 94, 0.6)"]
-                for (let row in globalMatrix) {
-                    for (let cell in globalMatrix[row]) {
-                        if (globalBatColors[row][cell] != 0) {
+                for (let row in matrix) {
+                    for (let cell in matrix[row]) {
+                        if (matrix[row][cell] != 0) {
                             ctxGrid.beginPath()
                             ctxGrid.rect(cell * size, row * size, size, size)
                                 //ctxGrid.fillStyle = colors[values.indexOf(globalBatColors[row][cell])]
@@ -267,7 +267,7 @@
                 console.timeEnd("Start")
             }
 
-            launch()
+            launch("global")
 
             document.addEventListener("keydown", function(e) {
                 if (e.key == "e" || e.key == "E") {
@@ -298,43 +298,64 @@
                 var coY = parseInt((evt.pageY - offset.top) / size)
                 console.log(coX, coY)
                 $('#coords').text(coX + "," + coY)
-                if (globalMatrix[coY][coX] == 1) {
+                if (allMatrixs[batDictionnary[currentMap].matrix][coY][coX] == 1) {
                     console.log("Unwalkable")
                     $('#coords').css('color', 'orangered')
                 } else {
                     if (document.getElementById("instantPathCheck").checked) {
-                        if (placeCounter > 2) {
-                            placeCounter = 1
-                            if (document.getElementsByClassName("start")[0]) {
-                                document.getElementsByClassName("start")[0].remove()
-                            }
-                            if (document.getElementsByClassName("exit")[0]) {
-                                document.getElementsByClassName("exit")[0].remove()
-                            }
-                        } else {
-                            if (placeCounter == 1) {
-                                placeDiv(coX, coY, "green", "start", {
-                                    x: 0,
-                                    y: 0
-                                })
+                        let canvas = document.getElementById("lines");
+                        let ctx = canvas.getContext('2d');
+                        switch (mapEntries.currentState) {
+                            case "none":
+                                mapEntries.entry = [coX, coY]
+                                mapEntries.currentState = "placedEntry"
                                 $("#entryX").val(coX)
                                 $("#entryY").val(coY)
-                                placeCounter++
-                            }
-                            if (placeCounter == 2 && ($("#entryX").val() != coX && $("#entryY").val() != coY)) {
-                                placeDiv(coX, coY, "red", "exit", {
-                                    x: 0,
-                                    y: 0
-                                })
+                                ctx.beginPath()
+                                ctx.rect(coX * size, coY * size, size, size)
+                                ctx.fillStyle = "rgba(0, 255, 3, 0.6)"
+                                ctx.fill()
+                                break
+                            case "placedEntry":
+                                mapEntries.exit = [coX, coY]
+                                mapEntries.currentState = "placedExit"
+                                $("#entryX").val(mapEntries.entry[0])
+                                $("#entryY").val(mapEntries.entry[1])
                                 $("#exitX").val(coX)
                                 $("#exitY").val(coY)
-                                placeCounter++
-                                launch()
-                            }
+                                launch(currentMap)
+                                break
+                            case "placedExit":
+                                mapEntries.exit = mapEntries.entry = []
+                                mapEntries.currentState = "none"
+                                $("#entryX, #entryY, #exitX, #exitY").each(function() {
+                                    $(this).val("")
+                                })
+                                ctx.clearRect(0, 0, canvas.width, canvas.height)
+                                break
                         }
+                        /*if (placeCounter == 1) {
+                            placeDiv(coX, coY, "green", "start", {
+                                x: 0,
+                                y: 0
+                            })
+                            $("#entryX").val(coX)
+                            $("#entryY").val(coY)
+                            placeCounter++
+                        }
+                        if (placeCounter == 2 && ($("#entryX").val() != coX && $("#entryY").val() != coY)) {
+                            placeDiv(coX, coY, "red", "exit", {
+                                x: 0,
+                                y: 0
+                            })
+                            $("#exitX").val(coX)
+                            $("#exitY").val(coY)
+                            placeCounter++
+                            launch("global")
+                        }*/
                     }
-                    $('#coords').css('color', 'green')
                 }
+                $('#coords').css('color', 'green')
             }
 
             function attachEvent(at) {
@@ -349,8 +370,6 @@
                 var salle = $("#destination").val()
                 salle.split("", 3)
                 console.log(salle[2])
-                console.log(passingTrough[planCounter])
-                planCounter++
                 launchNew()
             }
 
@@ -385,13 +404,17 @@
 
             function launchNew(val) {
                 val = "bat2"
-                document.getElementById("container").style.background = "url('bat2rdc.png')"
+                document.getElementById("container").style.background = "url('data/bat2rdc.png')"
                 document.getElementById("container").style.backgroundRepeat = "no-repeat"
                 document.getElementById("container").style.backgroundSize = "contain"
                 if (val == "bat2") {
                     console.log(document.getElementById("container").naturalHeight)
                     document.getElementById("container").style.width = "1122px"
+                    document.getElementById("lines").width = document.getElementById("grid").width = parseInt(document.getElementById("container").style.width)
                     document.getElementById("container").style.height = "1616px"
+                    document.getElementById("lines").height = document.getElementById("grid").height = parseInt(document.getElementById("container").style.height)
+                    launch("bat2rdc")
+                    buildGrid()
                 }
             }
 
