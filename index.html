@@ -25,7 +25,7 @@
         }
         
         #container {
-            background: url("https://i.imgur.com/lca1ENM.jpg");
+            background: url("data/globalImage.jpg");
             background-repeat: no-repeat;
             background-size: contain;
             position: relative;
@@ -354,6 +354,40 @@
                 salle.split("", 3)
                 console.log(salle[2])
                 launchNew()
+            }
+
+            function getClosestPointInMatrix(point, matrix, stopValue, maxValue) {
+                let curX = 0,
+                    curY = 0,
+                    xIndic = 1,
+                    yIndic = 1,
+                    moveState = "vertical",
+                    iterations = 0,
+                    newPoint = {
+                        x: point.x,
+                        y: point.y
+                    }
+                while (matrix[newPoint.y][newPoint.x] != stopValue) {
+                    if (curX == xIndic && moveState == "horizontal") {
+                        curX = 0
+                        xIndic++
+                        moveState = "vertical"
+                        point.x = newPoint.x
+                    } else if (curY == yIndic && moveState == "vertical") {
+                        curY = 0
+                        yIndic++
+                        moveState = "horizontal"
+                        point.y = newPoint.y
+                    }
+                    (moveState == "horizontal" ? curX++ : curY++)
+                    newPoint.x = (xIndic % 2 == 0 ? point.x - curX : point.x + curX)
+                    newPoint.y = (yIndic % 2 == 0 ? point.y - curY : point.y + curY)
+                    iterations++
+                    if (iterations > maxValue) break
+                }
+                point.x = newPoint.x
+                point.y = newPoint.y
+                return point
             }
 
             //https://www.geeksforgeeks.org/program-check-three-points-collinear/
